@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DivideAí - Divisão de Despesas</title>
+  
+  <!-- CSS do Calendário Flatpickr -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
+
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #eef2f5; margin: 0; padding: 15px; }
+    .container { max-width: 480px; margin: 0 auto; }
+    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
+    h1 { color: #2c3e50; font-size: 26px; text-align: center; margin-top: 0; margin-bottom: 15px; }
+    h2 { color: #34495e; font-size: 18px; margin-top: 0; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; }
+    label { font-weight: 600; display: block; margin-top: 12px; margin-bottom: 5px; color: #4a5568; font-size: 14px; }
+    input, select, button { width: 100%; padding: 11px; border-radius: 8px; border: 1px solid #cbd5e0; box-sizing: border-box; font-size: 15px; }
+    button { background-color: #27ae60; color: white; border: none; font-weight: bold; margin-top: 15px; cursor: pointer; transition: background 0.2s; }
+    button:hover { background-color: #219150; }
+    .btn-secundario { background-color: #718096; margin-top: 10px; }
+    .btn-secundario:hover { background-color: #4a5568; }
+    .btn-azul { background-color: #3182ce; }
+    .btn-azul:hover { background-color: #2b6cb0; }
+    .btn-roxo { background-color: #8e44ad; }
+    .btn-roxo:hover { background-color: #732d91; }
+    .btn-top { margin-top: 0; margin-bottom: 15px; }
+    .participant-input { margin-bottom: 8px; }
+    .checkbox-group { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
+    .checkbox-item { display: flex; align-items: center; gap: 8px; font-weight: normal; margin: 0; cursor: pointer; }
+    .checkbox-item input { width: auto; }
+    
+    /* Cards de Evento */
+    .evento-card { background: #fff; border: 1px solid #e2e8f0; border-left: 5px solid #3182ce; padding: 15px; border-radius: 8px; margin-bottom: 12px; }
+    .evento-card.quitado { border-left-color: #38a169; background: #f0fff4; }
+    .evento-header { display: flex; justify-content: space-between; align-items: center; }
+    .evento-titulo { font-size: 16px; font-weight: bold; color: #2d3748; }
+    .badge-status { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; color: white; background-color: #dd6b20; }
+    .badge-status.quitado { background-color: #38a169; }
+    
+    .despesa-item { background: #f8fafc; border-left: 4px solid #3498db; padding: 10px 12px; border-radius: 6px; margin-bottom: 10px; }
+    .despesa-item strong { color: #2c3e50; }
+    .despesa-detalhes { font-size: 13px; color: #718096; margin-top: 4px; }
+    .pix-item { background: #fdf6e2; border-left: 4px solid #f39c12; padding: 12px; border-radius: 6px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+    .pix-item.pago { background: #e8f8f5; border-left-color: #2ecc71; text-decoration: line-through; opacity: 0.7; }
+    .oculto { display: none; }
+
+    /* Destaque para dias com eventos quitados no calendário */
+    .flatpickr-day.dia-com-evento {
+      background-color: #27ae60 !important;
+      color: white !important;
+      border-radius: 50% !important;
+      font-weight: bold;
+    }
+    .flatpickr-day.dia-com-evento:hover {
+      background-color: #219150 !important;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>DivideAí</h1>
+
+    <!-- TELA PRINCIPAL: Eventos em Aberto + Botão para Criar Novo -->
+    <div id="telaPrincipal" class="card">
+      <button onclick="irParaCriarEvento()" style="font-size: 16px; padding: 12px; margin-bottom: 15px;">+ Criar Novo Evento</button>
+      
+      <h2>Eventos em Aberto</h2>
+
+      <div id="listaEventosEmAberto" style="margin-top: 15px;">
+        <p style="color: #a0aec0; font-size: 14px; text-align: center;">Nenhum evento em aberto no momento.</p>
+      </div>
+
+      <button onclick="irParaEventosQuitados()" class="btn-roxo" style="margin-top: 25px;">Histórico de Eventos Quitados</button>
+    </div>
+
+    <!-- TELA 2: Formulário de Criação do Evento -->
+    <div id="telaCriarEvento" class="card oculto">
+      <button onclick="voltarParaPrincipal()" class="btn-secundario btn-top">← Voltar para Eventos</button>
+      <h2>Criar Novo Evento</h2>
+      
+      <label for="nomeEvento">Nome do Evento / Viagem:</label>
+      <input type="text" id="nomeEvento" placeholder="Ex: Viagem Praia 2026">
+
+      <label for="dataEvento">Data do Evento:</label>
+      <input type="text" id="dataEvento" placeholder="Selecione a data">
+
+      <label for="qtdPessoas">Quantidade de Pessoas:</label>
+      <select id="qtdPessoas" onchange="gerarCamposParticipantes()"></select>
+
+      <label>Nome dos Participantes:</label>
+      <div id="listaParticipantesInputs"></div>
+
+      <button onclick="salvarEvento()">Salvar e Ir para Eventos</button>
+    </div>
+
+    <!-- TELA 3: Eventos Quitados (Com Calendário) -->
+    <div id="telaEventosQuitados" class="card oculto">
+      <button onclick="voltarParaPrincipal()" class="btn-secundario btn-top">← Voltar para Eventos</button>
+      <h2>Eventos Quitados</h2>
+
+      <!-- Filtro por Data -->
+      <label for="filtroData">Filtrar por Data (Dias verdes têm eventos quitados):</label>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="filtroData" placeholder="Selecione um dia">
+        <button onclick="limparFiltro()" class="btn-secundario" style="margin-top:0; width: 35%;">Limpar</button>
+      </div>
+
+      <div id="listaEventosQuitados" style="margin-top: 15px;">
+        <p style="color: #a0aec0; font-size: 14px; text-align: center;">Nenhum evento quitado encontrado.</p>
+      </div>
+    </div>
+
+    <!-- TELA 4: Detalhes do Evento Selecionado -->
+    <div id="telaDetalhesEvento" class="card oculto">
+      <div class="evento-header">
+        <h2 id="tituloEventoAtivo" style="margin: 0;">Evento</h2>
+        <span id="badgeStatusDetalhes" class="badge-status">Em aberto</span>
+      </div>
+
+      <p style="font-size: 13px; color: #718096; margin-top: 6px; margin-bottom: 2px;" id="dataEventoAtivo"></p>
+      <p style="font-size: 14px; color: #4a5568; margin-top: 4px;" id="participantesEventoAtivo"></p>
+
+      <div style="background: #f7fafc; padding: 12px; border-radius: 8px; border: 1px solid #edf2f7; margin-top: 15px;">
+        <label class="checkbox-item" style="font-weight: bold;">
+          <input type="checkbox" id="checkFecharEvento" onchange="alternarFechamentoEventoManual()"> Fechar Evento (Marcar como Quitado)
+        </label>
+      </div>
+
+      <button onclick="irParaSubEventos()" class="btn-azul">Gerenciar Sub-eventos / Despesas</button>
+      <button onclick="irParaQuitacao()" class="btn-roxo">Calcular PIXs / Fechamento</button>
+      <button onclick="voltarDoDetalhe()" class="btn-secundario">← Voltar</button>
+    </div>
+
+    <!-- TELA 5: Sub-eventos / Despesas -->
+    <div id="telaSubEventos" class="card oculto">
+      <button onclick="voltarParaDetalhes()" class="btn-secundario btn-top">← Voltar para o Evento</button>
+
+      <h2>Sub-eventos / Despesas</h2>
+      
+      <div style="background: #f7fafc; padding: 15px; border-radius: 8px; border: 1px solid #edf2f7; margin-top: 10px;">
+        <h3 style="margin-top: 0; font-size: 15px; color: #2d3748;">+ Cadastrar Novo Sub-evento</h3>
+        
+        <label for="nomeDespesa">Descrição:</label>
+        <input type="text" id="nomeDespesa" placeholder="Ex: Jantar de Quinta, Aluguel, Mercado">
+
+        <label for="valorDespesa">Valor Total (R$):</label>
+        <input type="number" id="valorDespesa" step="0.01" placeholder="0,00">
+
+        <label for="pagoPor">Quem pagou?</label>
+        <select id="pagoPor"></select>
+
+        <label>Quem participou dessa despesa?</label>
+        <div id="checkboxesParticipantes" class="checkbox-group"></div>
+
+        <button onclick="adicionarDespesa()" style="background-color: #2980b9;">Adicionar Sub-evento</button>
+      </div>
+
+      <h3 style="margin-top: 20px; font-size: 16px; color: #2d3748;">Lista de Sub-eventos</h3>
+      <div id="listaDespesas"></div>
+    </div>
+
+    <!-- TELA 6: Quitação e Fechamento -->
+    <div id="telaQuitacao" class="card oculto">
+      <h2>Fechamento e PIXs</h2>
+      <p style="font-size: 14px; color: #666;">Marque a caixa de cada pagamento assim que for realizando o PIX.</p>
+
+      <div id="listaPixs"></div>
+
+      <button onclick="voltarParaDetalhes()" class="btn-secundario">← Voltar para o Evento</button>
+    </div>
+  </div>
+
+  <!-- Scripts do Calendário Flatpickr -->
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
+
+  <script>
+    let listaEventos = [];
+    let eventoIndexAtivo = null;
+    let telaOrigemDetalhes = 'principal';
+    let pickerCriacao, pickerFiltro;
+
+    document.addEventListener("DOMContentLoaded", function() {
+      pickerCriacao = flatpickr("#dataEvento", {
+        locale: "pt",
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "d/m/Y",
+        defaultDate: "today"
+      });
+
+      pickerFiltro = flatpickr("#filtroData", {
+        locale: "pt",
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "d/m/Y",
+        onChange: function(selectedDates, dateStr) {
+          renderizarEventosQuitados(dateStr);
+        },
+        onDayCreate: function(dObj, dStr, fp, dayElement) {
+          const dateFormatted = dayElement.dateObj.toISOString().split('T')[0];
+          const temQuitado = listaEventos.some(e => e.data === dateFormatted && e.status === 'Quitado');
+          if (temQuitado) {
+            dayElement.classList.add("dia-com-evento");
+          }
+        }
+      });
+
+      renderizarEventosEmAberto();
+    });
+
+    const selectQtd = document.getElementById('qtdPessoas');
+    for (let i = 2; i <= 20; i++) {
+      const option = document.createElement('option');
+      option.value = i;
+      option.textContent = `${i} pessoas`;
+      selectQtd.appendChild(option);
+    }
+
+    function gerarCamposParticipantes() {
+      const qtd = parseInt(selectQtd.value);
+      const container = document.getElementById('listaParticipantesInputs');
+      container.innerHTML = '';
+      for (let i = 1; i <= qtd; i++) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'participant-input';
+        input.placeholder = `Nome da Pessoa ${i}`;
+        input.id = `pessoa_${i}`;
+        container.appendChild(input);
+      }
+    }
+    gerarCamposParticipantes();
+
+    function formatarDataBR(dataIso) {
+      if (!dataIso) return '';
+      const partes = dataIso.split('-');
+      return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    }
+
+    function salvarEvento() {
+      const nome = document.getElementById('nomeEvento').value.trim();
+      const data = document.getElementById('dataEvento').value;
+
+      if (!nome) { alert('Por favor, informe o nome do evento.'); return; }
+      if (!data) { alert('Por favor, selecione uma data para o evento.'); return; }
+
+      const qtd = parseInt(selectQtd.value);
+      const participantes = [];
+      for (let i = 1; i <= qtd; i++) {
+        const pNome = document.getElementById(`pessoa_${i}`).value.trim();
+        if (pNome) participantes.push(pNome);
+      }
+
+      if (participantes.length < 2) {
+        alert('Preencha o nome de pelo menos 2 pessoas.');
+        return;
+      }
+
+      const novoEvento = {
+        id: Date.now(),
+        nome: nome,
+        data: data,
+        status: 'Em aberto',
+        participantes: participantes,
+        subEventos: [],
+        liquidacoes: []
+      };
+
+      listaEventos.push(novoEvento);
+
+      // Limpar campos
+      document.getElementById('nomeEvento').value = '';
+      pickerCriacao.setDate(new Date());
+      selectQtd.value = 2;
+      gerarCamposParticipantes();
+
+      // Volta para a tela principal onde estão os eventos em aberto
+      voltarParaPrincipal();
+    }
+
+    function irParaCriarEvento() {
+      esconderTodasTelas();
+      document.getElementById('telaCriarEvento').classList.remove('oculto');
+    }
+
+    function irParaEventosQuitados() {
+      esconderTodasTelas();
+      document.getElementById('telaEventosQuitados').classList.remove('oculto');
+      renderizarEventosQuitados();
+      if (pickerFiltro) pickerFiltro.redraw();
+    }
+
+    function voltarParaPrincipal() {
+      esconderTodasTelas();
+      document.getElementById('telaPrincipal').classList.remove('oculto');
+      renderizarEventosEmAberto();
+    }
+
+    function esconderTodasTelas() {
+      document.getElementById('telaPrincipal').classList.add('oculto');
+      document.getElementById('telaCriarEvento').classList.add('oculto');
+      document.getElementById('telaEventosQuitados').classList.add('oculto');
+      document.getElementById('telaDetalhesEvento').classList.add('oculto');
+      document.getElementById('telaSubEventos').classList.add('oculto');
+      document.getElementById('telaQuitacao').classList.add('oculto');
+    }
+
+    function renderizarEventosEmAberto() {
+      const container = document.getElementById('listaEventosEmAberto');
+      const emAberto = listaEventos.filter(e => e.status === 'Em aberto');
+
+      if (emAberto.length === 0) {
+        container.innerHTML = '<p style="color: #a0aec0; font-size: 14px; text-align: center;">Nenhum evento em aberto no momento.</p>';
+        return;
+      }
+
+      container.innerHTML = '';
+      emAberto.forEach((evt) => {
+        const indexReal = listaEventos.findIndex(e => e.id === evt.id);
+        const card = document.createElement('div');
+        card.className = 'evento-card';
+        card.innerHTML = `
+          <div class="evento-header">
+            <span class="evento-titulo">${evt.nome}</span>
+            <span class="badge-status">Em aberto</span>
+          </div>
+          <div style="font-size: 13px; color: #718096; margin-top: 5px;">
+            📅 <b>Data:</b> ${formatarDataBR(evt.data)} | ${evt.participantes.length} pessoas • ${evt.subEventos.length} sub-eventos
+          </div>
+          <button onclick="abrirEvento(${indexReal}, 'principal')" style="margin-top: 10px; padding: 8px; font-size: 13px; background-color: #4a5568;">Abrir Evento</button>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderizarEventosQuitados(dataFiltro = null) {
+      const container = document.getElementById('listaEventosQuitados');
+      let quitados = listaEventos.filter(e => e.status === 'Quitado');
+
+      if (dataFiltro) {
+        quitados = quitados.filter(e => e.data === dataFiltro);
+      }
+
+      if (quitados.length === 0) {
+        container.innerHTML = '<p style="color: #a0aec0; font-size: 14px; text-align: center;">Nenhum evento quitado encontrado.</p>';
+        return;
+      }
+
+      container.innerHTML = '';
+      quitados.forEach((evt) => {
+        const indexReal = listaEventos.findIndex(e => e.id === evt.id);
+        const card = document.createElement('div');
+        card.className = 'evento-card quitado';
+        card.innerHTML = `
+          <div class="evento-header">
+            <span class="evento-titulo">${evt.nome}</span>
+            <span class="badge-status quitado">Quitado</span>
+          </div>
+          <div style="font-size: 13px; color: #718096; margin-top: 5px;">
+            📅 <b>Data:</b> ${formatarDataBR(evt.data)} | ${evt.participantes.length} pessoas • ${evt.subEventos.length} sub-eventos
+          </div>
+          <button onclick="abrirEvento(${indexReal}, 'quitados')" style="margin-top: 10px; padding: 8px; font-size: 13px; background-color: #4a5568;">Abrir Evento</button>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function limparFiltro() {
+      if (pickerFiltro) pickerFiltro.clear();
+      renderizarEventosQuitados();
+    }
+
+    function abrirEvento(index, origem) {
+      eventoIndexAtivo = index;
+      telaOrigemDetalhes = origem;
+      const evt = listaEventos[eventoIndexAtivo];
+
+      esconderTodasTelas();
+      document.getElementById('telaDetalhesEvento').classList.remove('oculto');
+
+      document.getElementById('tituloEventoAtivo').textContent = evt.nome;
+      document.getElementById('dataEventoAtivo').textContent = `📅 Data: ${formatarDataBR(evt.data)}`;
+      document.getElementById('participantesEventoAtivo').textContent = `Participantes: ${evt.participantes.join(', ')}`;
+      
+      const isQuitado = evt.status === 'Quitado';
+      document.getElementById('checkFecharEvento').checked = isQuitado;
+      atualizarBadgeDetalhes(isQuitado);
+    }
+
+    function alternarFechamentoEventoManual() {
+      const check = document.getElementById('checkFecharEvento');
+      const evt = listaEventos[eventoIndexAtivo];
+      
+      evt.status = check.checked ? 'Quitado' : 'Em aberto';
+
+      atualizarBadgeDetalhes(evt.status === 'Quitado');
+      if (pickerFiltro) pickerFiltro.redraw();
+    }
+
+    function atualizarBadgeDetalhes(isQuitado) {
+      const badge = document.getElementById('badgeStatusDetalhes');
+      if (isQuitado) {
+        badge.textContent = 'Quitado';
+        badge.classList.add('quitado');
+      } else {
+        badge.textContent = 'Em aberto';
+        badge.classList.remove('quitado');
+      }
+    }
+
+    function voltarDoDetalhe() {
+      if (telaOrigemDetalhes === 'quitados') {
+        irParaEventosQuitados();
+      } else {
+        voltarParaPrincipal();
+      }
+    }
+
+    function irParaSubEventos() {
+      esconderTodasTelas();
+      document.getElementById('telaSubEventos').classList.remove('oculto');
+      atualizarFormularioDespesas();
+      renderizarDespesas();
+    }
+
+    function voltarParaDetalhes() {
+      esconderTodasTelas();
+      document.getElementById('telaDetalhesEvento').classList.remove('oculto');
+    }
+
+    function atualizarFormularioDespesas() {
+      const evt = listaEventos[eventoIndexAtivo];
+      const selectPago = document.getElementById('pagoPor');
+      const containerCheck = document.getElementById('checkboxesParticipantes');
+      
+      selectPago.innerHTML = '';
+      containerCheck.innerHTML = '';
+
+      evt.participantes.forEach((p) => {
+        const opt = document.createElement('option');
+        opt.value = p;
+        opt.textContent = p;
+        selectPago.appendChild(opt);
+
+        const label = document.createElement('label');
+        label.className = 'checkbox-item';
+        label.innerHTML = `<input type="checkbox" value="${p}" checked> ${p}`;
+        containerCheck.appendChild(label);
+      });
+    }
+
+    function adicionarDespesa() {
+      const evt = listaEventos[eventoIndexAtivo];
+      const desc = document.getElementById('nomeDespesa').value.trim();
+      const valor = parseFloat(document.getElementById('valorDespesa').value);
+      const quemPagou = document.getElementById('pagoPor').value;
+      const marcados = Array.from(document.querySelectorAll('#checkboxesParticipantes input:checked')).map(cb => cb.value);
+
+      if (!desc) { alert('Informe a descrição do sub-evento.'); return; }
+      if (isNaN(valor) || valor <= 0) { alert('Informe um valor válido.'); return; }
+      if (marcados.length === 0) { alert('Selecione pelo menos uma pessoa para este sub-evento.'); return; }
+
+      evt.subEventos.push({
+        id: Date.now(),
+        descricao: desc,
+        valor: valor,
+        pagoPor: quemPagou,
+        participantes: marcados
+      });
+
+      document.getElementById('nomeDespesa').value = '';
+      document.getElementById('valorDespesa').value = '';
+      document.querySelectorAll('#checkboxesParticipantes input').forEach(cb => cb.checked = true);
+
+      renderizarDespesas();
+    }
+
+    function renderizarDespesas() {
+      const evt = listaEventos[eventoIndexAtivo];
+      const container = document.getElementById('listaDespesas');
+      if (evt.subEventos.length === 0) {
+        container.innerHTML = '<p style="color: #a0aec0; font-size: 14px; text-align: center;">Nenhum sub-evento adicionado ainda.</p>';
+        return;
+      }
+
+      container.innerHTML = '';
+      evt.subEventos.forEach((d) => {
+        const item = document.createElement('div');
+        item.className = 'despesa-item';
+        item.innerHTML = `
+          <strong>${d.descricao}</strong> — R$ ${d.valor.toFixed(2)}<br>
+          <div class="despesa-detalhes">
+            <span>Pago por: <b>${d.pagoPor}</b></span><br>
+            <span>Dividido entre: ${d.participantes.join(', ')}</span>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function irParaQuitacao() {
+      const evt = listaEventos[eventoIndexAtivo];
+      if (evt.subEventos.length === 0) {
+        alert('Cadastre pelo menos um sub-evento antes de calcular a quitação.');
+        return;
+      }
+
+      calcularSaldos();
+      esconderTodasTelas();
+      document.getElementById('telaQuitacao').classList.remove('oculto');
+
+      renderizarPixs();
+    }
+
+    function calcularSaldos() {
+      const evt = listaEventos[eventoIndexAtivo];
+      const saldos = {};
+      evt.participantes.forEach(p => saldos[p] = 0);
+
+      evt.subEventos.forEach(d => {
+        const valorPorPessoa = d.valor / d.participantes.length;
+        saldos[d.pagoPor] += d.valor;
+
+        d.participantes.forEach(p => {
+          saldos[p] -= valorPorPessoa;
+        });
+      });
+
+      const devedores = [];
+      const credores = [];
+
+      Object.keys(saldos).forEach(p => {
+        const val = Math.round(saldos[p] * 100) / 100;
+        if (val < -0.01) devedores.push({ nome: p, valor: Math.abs(val) });
+        if (val > 0.01) credores.push({ nome: p, valor: val });
+      });
+
+      const liquidacoes = [];
+      let i = 0, j = 0;
+
+      while (i < devedores.length && j < credores.length) {
+        const dev = devedores[i];
+        const cred = credores[j];
+        const min = Math.min(dev.valor, cred.valor);
+
+        liquidacoes.push({
+          id: `pix_${i}_${j}`,
+          de: dev.nome,
+          para: cred.nome,
+          valor: min,
+          pago: false
+        });
+
+        dev.valor -= min;
+        cred.valor -= min;
+
+        if (dev.valor < 0.01) i++;
+        if (cred.valor < 0.01) j++;
+      }
+
+      if (evt.liquidacoes.length > 0) {
+        liquidacoes.forEach(liq => {
+          const antigo = evt.liquidacoes.find(a => a.de === liq.de && a.para === liq.para && Math.abs(a.valor - liq.valor) < 0.01);
+          if (antigo) liq.pago = antigo.pago;
+        });
+      }
+
+      evt.liquidacoes = liquidacoes;
+    }
+
+    function alternarPago(index) {
+      const evt = listaEventos[eventoIndexAtivo];
+      evt.liquidacoes[index].pago = !evt.liquidacoes[index].pago;
+      
+      const todosPagos = evt.liquidacoes.every(l => l.pago);
+      if (todosPagos) {
+        evt.status = 'Quitado';
+      }
+      
+      renderizarPixs();
+      if (pickerFiltro) pickerFiltro.redraw();
+    }
+
+    function renderizarPixs() {
+      const evt = listaEventos[eventoIndexAtivo];
+      const container = document.getElementById('listaPixs');
+      
+      if (evt.liquidacoes.length === 0) {
+        container.innerHTML = '<p style="color: #27ae60; font-weight: bold; text-align: center;">Tudo zerado!</p>';
+        return;
+      }
+
+      container.innerHTML = '';
+      evt.liquidacoes.forEach((l, index) => {
+        const item = document.createElement('div');
+        item.className = `pix-item ${l.pago ? 'pago' : ''}`;
+        item.innerHTML = `
+          <div>
+            <b>${l.de}</b> paga <b>R$ ${l.valor.toFixed(2)}</b> para <b>${l.para}</b>
+          </div>
+          <label style="margin:0; cursor:pointer;">
+            <input type="checkbox" ${l.pago ? 'checked' : ''} onchange="alternarPago(${index})"> Pago
+          </label>
+        `;
+        container.appendChild(item);
+      });
+    }
+  </script>
+</body>
+</html>
