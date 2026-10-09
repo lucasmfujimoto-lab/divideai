@@ -489,22 +489,29 @@
         defaultDate: "today"
       });
 
-      pickerFiltro = flatpickr("#filtroData", {
-        locale: "pt",
-        dateFormat: "Y-m-d",
-        altInput: true,
-        altFormat: "d/m/Y",
-        onChange: function(selectedDates, dateStr) {
-          renderizarEventosQuitados(dateStr);
-        },
-        onDayCreate: function(dObj, dStr, fp, dayElement) {
-          const dateFormatted = dayElement.dateObj.toISOString().split('T')[0];
-          const temQuitado = listaEventos.some(e => e.data === dateFormatted && e.status === 'Quitado');
-          if (temQuitado) {
-            dayElement.classList.add("dia-com-evento");
-          }
-        }
-      });
+ pickerFiltro = flatpickr("#filtroData", {
+  disableMobile: true, // 👈 Desativa o calendário padrão do iOS e força o Flatpickr
+  locale: "pt",
+  dateFormat: "Y-m-d",
+  altInput: true,
+  altFormat: "d/m/Y",
+  onChange: function(selectedDates, dateStr) {
+    renderizarEventosQuitados(dateStr);
+  },
+  onDayCreate: function(dObj, dStr, fp, dayElement) {
+    // Garante a formatação correta da data local (AAAA-MM-DD)
+    const ano = dayElement.dateObj.getFullYear();
+    const mes = String(dayElement.dateObj.getMonth() + 1).padStart(2, '0');
+    const dia = String(dayElement.dateObj.getDate()).padStart(2, '0');
+    const dateFormatted = `${ano}-${mes}-${dia}`;
+
+    const temQuitado = listaEventos.some(e => e.data === dateFormatted && e.status === 'Quitado');
+    if (temQuitado) {
+      dayElement.classList.add("dia-com-evento");
+    }
+  }
+});
+
 
       if (usuarioLogado) {
         carregarEventosDoUsuario();
