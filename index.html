@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Divide a Conta - Divisão de Despesas</title>
+  <title>Divide a Conta Aí</title>
   
   <!-- Configurações de Aplicativo (PWA) -->
   <link rel="manifest" href="manifest.json">
@@ -12,6 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="DivideAí">
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2489/2489756.png">
+
   <!-- CSS do Calendário Flatpickr -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
@@ -32,6 +33,8 @@
     .btn-azul:hover { background-color: #2b6cb0; }
     .btn-roxo { background-color: #8e44ad; }
     .btn-roxo:hover { background-color: #732d91; }
+    .btn-compartilhar { background-color: #dd6b20; margin-top: 10px; }
+    .btn-compartilhar:hover { background-color: #c05621; }
     .btn-top { margin-top: 0; margin-bottom: 15px; }
     .participant-input { margin-bottom: 8px; }
     .checkbox-group { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
@@ -45,6 +48,7 @@
     .evento-titulo { font-size: 16px; font-weight: bold; color: #2d3748; }
     .badge-status { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; color: white; background-color: #dd6b20; }
     .badge-status.quitado { background-color: #38a169; }
+    .codigo-box { background: #edf2f7; border: 1px dashed #cbd5e0; padding: 8px; border-radius: 6px; text-align: center; font-weight: bold; font-family: monospace; font-size: 16px; color: #2d3748; margin-top: 8px; }
     
     .despesa-item { background: #f8fafc; border-left: 4px solid #3498db; padding: 10px 12px; border-radius: 6px; margin-bottom: 10px; }
     .despesa-item strong { color: #2c3e50; }
@@ -64,7 +68,7 @@
 <body>
 
   <div class="container">
-    <h1>Divide a Conta</h1>
+    <h1>Divide a Conta Aí</h1>
 
     <!-- TELA 0: AUTENTICAÇÃO -->
     <div id="telaAuth" class="card">
@@ -97,14 +101,27 @@
         </div>
       </div>
 
-      <button onclick="irParaCriarEvento()" style="font-size: 16px; padding: 12px; margin-bottom: 15px;">+ Criar Novo Evento</button>
+      <button onclick="irParaCriarEvento()" style="font-size: 15px; padding: 12px;">+ Criar Novo Evento</button>
+      <button onclick="irParaEntrarPorCodigo()" class="btn-azul" style="font-size: 15px; padding: 12px; margin-top: 8px;">🔗 Entrar por Código / Compartilhamento</button>
       
-      <h2>Eventos em Aberto</h2>
+      <h2 style="margin-top: 20px;">Seus Eventos em Aberto</h2>
       <div id="listaEventosEmAberto" style="margin-top: 15px;">
         <p style="color: #a0aec0; font-size: 14px; text-align: center;">Carregando da nuvem...</p>
       </div>
 
       <button onclick="irParaEventosQuitados()" class="btn-roxo" style="margin-top: 25px;">Histórico de Eventos Quitados</button>
+    </div>
+
+    <!-- TELA ENTRAR POR CÓDIGO -->
+    <div id="telaEntrarCodigo" class="card oculto">
+      <button onclick="voltarParaPrincipal()" class="btn-secundario btn-top">← Voltar para Eventos</button>
+      <h2>Acessar Evento Compartilhado</h2>
+      <p style="font-size: 13px; color: #718096;">Digite o código de 6 caracteres que seu amigo enviou para você acessar o evento.</p>
+
+      <label for="codigoInput">Código do Evento:</label>
+      <input type="text" id="codigoInput" placeholder="Ex: ABC123" style="text-transform: uppercase; text-align: center; font-size: 18px; letter-spacing: 2px;">
+
+      <button onclick="entrarEventoPorCodigo()" class="btn-azul">Acessar Evento</button>
     </div>
 
     <!-- TELA ALTERAR SENHA -->
@@ -138,7 +155,7 @@
       <label>Nome dos Participantes:</label>
       <div id="listaParticipantesInputs"></div>
 
-      <button onclick="salvarEvento()">Salvar e Ir para Eventos</button>
+      <button onclick="salvarEvento()">Salvar e Criar Código de Compartilhamento</button>
     </div>
 
     <!-- TELA 3: EVENTOS QUITADOS -->
@@ -166,6 +183,12 @@
 
       <p style="font-size: 13px; color: #718096; margin-top: 6px; margin-bottom: 2px;" id="dataEventoAtivo"></p>
       <p style="font-size: 14px; color: #4a5568; margin-top: 4px;" id="participantesEventoAtivo"></p>
+
+      <!-- Código do Evento e Botão de Compartilhar -->
+      <div class="codigo-box">
+        Código: <span id="codigoEventoAtivo">------</span>
+      </div>
+      <button onclick="compartilharEvento()" class="btn-compartilhar">📲 Compartilhar / Copiar Link do WhatsApp</button>
 
       <div style="background: #f7fafc; padding: 12px; border-radius: 8px; border: 1px solid #edf2f7; margin-top: 15px;">
         <label class="checkbox-item" style="font-weight: bold;">
@@ -224,9 +247,9 @@
   <!-- Módulos do Firebase (SDK v9) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // Configuração com suas chaves do Firebase
+    // Suas chaves do Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyAEWOsJkFu0u4kd00FcQI04Lb1tdqnmZas",
       authDomain: "divideai-11ccd.firebaseapp.com",
@@ -237,17 +260,22 @@
       measurementId: "G-Y13N53L4D0"
     };
 
-    // Inicializa o Firebase e Firestore
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
     let usuarioLogado = localStorage.getItem('divideai_usuario_logado') || null;
+    let codigosMeusEventos = [];
     let listaEventos = [];
     let eventoIndexAtivo = null;
     let telaOrigemDetalhes = 'principal';
     let pickerCriacao, pickerFiltro;
 
-    // Exportação de funções para o escopo global (evita erros do onclick)
+    function gerarCodigoUnico() {
+      return Math.random().toString(36).substring(2, 8).toUpperCase();
+    }
+
+    // AUTENTICAÇÃO E SESSÃO
+
     window.mudarModoAuth = function(modo) {
       const titulo = document.getElementById('tituloAuth');
       const acoesLogin = document.getElementById('acoesLogin');
@@ -268,33 +296,28 @@
       const user = document.getElementById('usuarioInput').value.trim();
       const pass = document.getElementById('senhaInput').value.trim();
 
-      if (!user || !pass) {
-        alert('Por favor, preencha o usuário e a senha.');
-        return;
-      }
+      if (!user || !pass) { alert('Preencha usuário e senha.'); return; }
 
       try {
         const userRef = doc(db, "usuarios", user.toLowerCase());
         const docSnap = await getDoc(userRef);
 
         if (docSnap.exists()) {
-          alert(`O usuário "${user}" já existe na nuvem! Escolha outro nome.`);
+          alert(`O usuário "${user}" já existe! Escolha outro nome.`);
           return;
         }
 
-        // Salvar a nova conta no banco Firestore
         await setDoc(userRef, {
           usuarioOriginal: user,
           senha: pass,
-          eventos: []
+          meusEventos: []
         });
 
-        alert('Conta criada com sucesso na nuvem! Faça login para entrar.');
+        alert('Conta criada com sucesso! Faça login para continuar.');
         document.getElementById('senhaInput').value = '';
         window.mudarModoAuth('login');
       } catch (e) {
-        console.error("Erro ao cadastrar:", e);
-        alert("Erro ao conectar ao banco de dados. Verifique a permissão das regras no Firestore.");
+        alert("Erro no banco de dados. Verifique suas regras no Firestore.");
       }
     };
 
@@ -302,7 +325,7 @@
       const user = document.getElementById('usuarioInput').value.trim();
       const pass = document.getElementById('senhaInput').value.trim();
 
-      if (!user || !pass) { alert('Preencha o usuário e a senha.'); return; }
+      if (!user || !pass) { alert('Preencha usuário e senha.'); return; }
 
       try {
         const userRef = doc(db, "usuarios", user.toLowerCase());
@@ -315,15 +338,13 @@
 
         usuarioLogado = user;
         localStorage.setItem('divideai_usuario_logado', usuarioLogado);
-        listaEventos = docSnap.data().eventos || [];
 
         document.getElementById('usuarioInput').value = '';
         document.getElementById('senhaInput').value = '';
 
-        iniciarSessao(user);
+        await carregarEventosDoUsuario();
       } catch (e) {
-        console.error("Erro ao fazer login:", e);
-        alert("Erro ao conectar ao banco de dados.");
+        alert("Erro de conexão ao fazer login.");
       }
     };
 
@@ -334,33 +355,101 @@
       document.getElementById('telaAuth').classList.remove('oculto');
     };
 
-    function iniciarSessao(user) {
-      document.getElementById('nomeUsuarioLogado').textContent = user;
-      voltarParaPrincipal();
-    }
-
-    async function salvarNuvem() {
-      if (!usuarioLogado) return;
+    async function carregarEventosDoUsuario() {
+      document.getElementById('nomeUsuarioLogado').textContent = usuarioLogado;
+      
       const userRef = doc(db, "usuarios", usuarioLogado.toLowerCase());
-      await updateDoc(userRef, { eventos: listaEventos });
-    }
+      const docSnap = await getDoc(userRef);
+      
+      if (docSnap.exists()) {
+        codigosMeusEventos = docSnap.data().meusEventos || [];
+        listaEventos = [];
 
-    async function carregarDadosDoFirebase(user) {
-      try {
-        const userRef = doc(db, "usuarios", user.toLowerCase());
-        const docSnap = await getDoc(userRef);
-
-        if (docSnap.exists()) {
-          listaEventos = docSnap.data().eventos || [];
-          iniciarSessao(user);
-        } else {
-          fazerLogout();
+        for (const codigo of codigosMeusEventos) {
+          const evtRef = doc(db, "eventos", codigo);
+          const evtSnap = await getDoc(evtRef);
+          if (evtSnap.exists()) {
+            listaEventos.push(evtSnap.data());
+          }
         }
-      } catch (e) {
-        console.error("Erro ao carregar dados:", e);
-        fazerLogout();
+      }
+
+      // Se houver um parâmetro de compartilhamento na URL (ex: ?evento=ABC123)
+      const urlParams = new URLSearchParams(window.location.search);
+      const codigoUrl = urlParams.get('evento');
+      if (codigoUrl) {
+        await vincularEAbrirEvento(codigoUrl.toUpperCase());
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else {
+        voltarParaPrincipal();
       }
     }
+
+    // COMPARTILHAMENTO E EVENTOS GLOBAIS
+
+    window.irParaEntrarPorCodigo = function() {
+      esconderTodasTelas();
+      document.getElementById('telaEntrarCodigo').classList.remove('oculto');
+    };
+
+    window.entrarEventoPorCodigo = async function() {
+      const codigo = document.getElementById('codigoInput').value.trim().toUpperCase();
+      if (!codigo) { alert('Digite o código do evento.'); return; }
+
+      await vincularEAbrirEvento(codigo);
+    };
+
+    async function vincularEAbrirEvento(codigo) {
+      const evtRef = doc(db, "eventos", codigo);
+      const evtSnap = await getDoc(evtRef);
+
+      if (!evtSnap.exists()) {
+        alert('Evento não encontrado com este código.');
+        return;
+      }
+
+      // Adiciona o código aos eventos do usuário atual se ainda não tiver
+      if (!codigosMeusEventos.includes(codigo)) {
+        codigosMeusEventos.push(codigo);
+        const userRef = doc(db, "usuarios", usuarioLogado.toLowerCase());
+        await updateDoc(userRef, { meusEventos: arrayUnion(codigo) });
+      }
+
+      // Atualiza ou insere na lista local
+      const idExistente = listaEventos.findIndex(e => e.codigo === codigo);
+      if (idExistente >= 0) {
+        listaEventos[idExistente] = evtSnap.data();
+        abrirEvento(idExistente, 'principal');
+      } else {
+        listaEventos.push(evtSnap.data());
+        abrirEvento(listaEventos.length - 1, 'principal');
+      }
+    }
+
+    window.compartilharEvento = function() {
+      const evt = listaEventos[eventoIndexAtivo];
+      const urlCompartilhavel = `${window.location.origin}${window.location.pathname}?evento=${evt.codigo}`;
+      const texto = `Acesse a divisão de contas do evento "${evt.nome}" no Divide a Conta Aí pelo link: ${urlCompartilhavel} ou use o código: ${evt.codigo}`;
+
+      if (navigator.share) {
+        navigator.share({
+          title: 'Divide a Conta Aí',
+          text: texto,
+          url: urlCompartilhavel
+        }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(urlCompartilhavel);
+        alert(`Link copiado para a área de transferência:\n\n${urlCompartilhavel}`);
+      }
+    };
+
+    async function salvarEventoNuvem() {
+      const evt = listaEventos[eventoIndexAtivo];
+      const evtRef = doc(db, "eventos", evt.codigo);
+      await setDoc(evtRef, evt);
+    }
+
+    // ALTERAR SENHA
 
     window.irParaAlterarSenha = function() {
       esconderTodasTelas();
@@ -371,7 +460,7 @@
       const atual = document.getElementById('senhaAtualInput').value.trim();
       const nova = document.getElementById('novaSenhaInput').value.trim();
 
-      if (!atual || !nova) { alert('Preencha todos os campos de senha.'); return; }
+      if (!atual || !nova) { alert('Preencha os campos de senha.'); return; }
 
       const userRef = doc(db, "usuarios", usuarioLogado.toLowerCase());
       const docSnap = await getDoc(userRef);
@@ -382,14 +471,15 @@
       }
 
       await updateDoc(userRef, { senha: nova });
-      alert('Senha alterada com sucesso na nuvem!');
+      alert('Senha alterada com sucesso!');
       
       document.getElementById('senhaAtualInput').value = '';
       document.getElementById('novaSenhaInput').value = '';
       voltarParaPrincipal();
     };
 
-    // Inicialização do aplicativo
+    // INICIALIZAÇÃO
+
     document.addEventListener("DOMContentLoaded", function() {
       pickerCriacao = flatpickr("#dataEvento", {
         locale: "pt",
@@ -417,14 +507,15 @@
       });
 
       if (usuarioLogado) {
-        carregarDadosDoFirebase(usuarioLogado);
+        carregarEventosDoUsuario();
       } else {
         esconderTodasTelas();
         document.getElementById('telaAuth').classList.remove('oculto');
       }
     });
 
-    // Lógica dos Formulários e Eventos
+    // CRIAÇÃO E GERENCIAMENTO DE EVENTOS
+
     const selectQtd = document.getElementById('qtdPessoas');
     for (let i = 2; i <= 20; i++) {
       const option = document.createElement('option');
@@ -469,8 +560,9 @@
 
       if (participantes.length < 2) { alert('Preencha pelo menos 2 participantes.'); return; }
 
+      const codigoNovo = gerarCodigoUnico();
       const novoEvento = {
-        id: Date.now(),
+        codigo: codigoNovo,
         nome: nome,
         data: data,
         status: 'Em aberto',
@@ -479,8 +571,16 @@
         liquidacoes: []
       };
 
+      // Salva na coleção global de eventos do Firestore
+      await setDoc(doc(db, "eventos", codigoNovo), novoEvento);
+
+      // Vincula ao usuário atual
+      codigosMeusEventos.push(codigoNovo);
+      await updateDoc(doc(db, "usuarios", usuarioLogado.toLowerCase()), {
+        meusEventos: arrayUnion(codigoNovo)
+      });
+
       listaEventos.push(novoEvento);
-      await salvarNuvem();
 
       document.getElementById('nomeEvento').value = '';
       pickerCriacao.setDate(new Date());
@@ -511,6 +611,7 @@
     function esconderTodasTelas() {
       document.getElementById('telaAuth').classList.add('oculto');
       document.getElementById('telaPrincipal').classList.add('oculto');
+      document.getElementById('telaEntrarCodigo').classList.add('oculto');
       document.getElementById('telaAlterarSenha').classList.add('oculto');
       document.getElementById('telaCriarEvento').classList.add('oculto');
       document.getElementById('telaEventosQuitados').classList.add('oculto');
@@ -530,7 +631,7 @@
 
       container.innerHTML = '';
       emAberto.forEach((evt) => {
-        const indexReal = listaEventos.findIndex(e => e.id === evt.id);
+        const indexReal = listaEventos.findIndex(e => e.codigo === evt.codigo);
         const card = document.createElement('div');
         card.className = 'evento-card';
         card.innerHTML = `
@@ -539,7 +640,7 @@
             <span class="badge-status">Em aberto</span>
           </div>
           <div style="font-size: 13px; color: #718096; margin-top: 5px;">
-            📅 <b>Data:</b> ${formatarDataBR(evt.data)} | ${evt.participantes.length} pessoas • ${evt.subEventos.length} sub-eventos
+            📅 <b>Data:</b> ${formatarDataBR(evt.data)} | ${evt.participantes.length} pessoas • ${evt.subEventos.length} despesas
           </div>
           <button onclick="abrirEvento(${indexReal}, 'principal')" style="margin-top: 10px; padding: 8px; font-size: 13px; background-color: #4a5568;">Abrir Evento</button>
         `;
@@ -560,7 +661,7 @@
 
       container.innerHTML = '';
       quitados.forEach((evt) => {
-        const indexReal = listaEventos.findIndex(e => e.id === evt.id);
+        const indexReal = listaEventos.findIndex(e => e.codigo === evt.codigo);
         const card = document.createElement('div');
         card.className = 'evento-card quitado';
         card.innerHTML = `
@@ -569,7 +670,7 @@
             <span class="badge-status quitado">Quitado</span>
           </div>
           <div style="font-size: 13px; color: #718096; margin-top: 5px;">
-            📅 <b>Data:</b> ${formatarDataBR(evt.data)} | ${evt.participantes.length} pessoas • ${evt.subEventos.length} sub-eventos
+            📅 <b>Data:</b> ${formatarDataBR(evt.data)} | ${evt.participantes.length} pessoas • ${evt.subEventos.length} despesas
           </div>
           <button onclick="abrirEvento(${indexReal}, 'quitados')" style="margin-top: 10px; padding: 8px; font-size: 13px; background-color: #4a5568;">Abrir Evento</button>
         `;
@@ -593,6 +694,7 @@
       document.getElementById('tituloEventoAtivo').textContent = evt.nome;
       document.getElementById('dataEventoAtivo').textContent = `📅 Data: ${formatarDataBR(evt.data)}`;
       document.getElementById('participantesEventoAtivo').textContent = `Participantes: ${evt.participantes.join(', ')}`;
+      document.getElementById('codigoEventoAtivo').textContent = evt.codigo;
       
       const isQuitado = evt.status === 'Quitado';
       document.getElementById('checkFecharEvento').checked = isQuitado;
@@ -605,7 +707,7 @@
       
       evt.status = check.checked ? 'Quitado' : 'Em aberto';
 
-      await salvarNuvem();
+      await salvarEventoNuvem();
       atualizarBadgeDetalhes(evt.status === 'Quitado');
       if (pickerFiltro) pickerFiltro.redraw();
     };
@@ -682,7 +784,7 @@
         participantes: marcados
       });
 
-      await salvarNuvem();
+      await salvarEventoNuvem();
 
       document.getElementById('nomeDespesa').value = '';
       document.getElementById('valorDespesa').value = '';
@@ -782,7 +884,7 @@
       }
 
       evt.liquidacoes = liquidacoes;
-      salvarNuvem();
+      salvarEventoNuvem();
     }
 
     window.alternarPago = async function(index) {
@@ -792,7 +894,7 @@
       const todosPagos = evt.liquidacoes.every(l => l.pago);
       if (todosPagos) evt.status = 'Quitado';
 
-      await salvarNuvem();
+      await salvarEventoNuvem();
       renderizarPixs();
       if (pickerFiltro) pickerFiltro.redraw();
     };
@@ -822,16 +924,16 @@
       });
     }
   </script>
+
+  <!-- Registro do Service Worker para PWA -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('App pronto para instalação!', reg))
-          .catch(err => console.error('Erro ao registrar app:', err));
+          .then(reg => console.log('App pronto para uso!', reg))
+          .catch(err => console.error('Erro ao registrar SW:', err));
       });
     }
   </script>
-</body>
-</html>
 </body>
 </html>
