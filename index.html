@@ -214,30 +214,25 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
 
-<!-- Módulos do Firebase (SDK v9) -->
+  <!-- Módulos do Firebase (SDK v9) -->
   <script type="module">
-   // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyAEWOsJkFu0u4kd00FcQI04Lb1tdqnmZas",
-  authDomain: "divideai-11ccd.firebaseapp.com",
-  projectId: "divideai-11ccd",
-  storageBucket: "divideai-11ccd.firebasestorage.app",
-  messagingSenderId: "548322832630",
-  appId: "1:548322832630:web:59a7b7ccfff88e9019bcd7",
-  measurementId: "G-Y13N53L4D0"
-};
+    // Configuração com suas chaves do Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyAEWOsJkFu0u4kd00FcQI04Lb1tdqnmZas",
+      authDomain: "divideai-11ccd.firebaseapp.com",
+      projectId: "divideai-11ccd",
+      storageBucket: "divideai-11ccd.firebasestorage.app",
+      messagingSenderId: "548322832630",
+      appId: "1:548322832630:web:59a7b7ccfff88e9019bcd7",
+      measurementId: "G-Y13N53L4D0"
+    };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-
+    // Inicializa o Firebase e Firestore
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
     let usuarioLogado = localStorage.getItem('divideai_usuario_logado') || null;
     let listaEventos = [];
@@ -245,7 +240,7 @@ const analytics = getAnalytics(app);
     let telaOrigemDetalhes = 'principal';
     let pickerCriacao, pickerFiltro;
 
-    // EXPORTA AS FUNÇÕES PARA O ESCOPO GLOBAL (Resolve o problema do onclick no HTML)
+    // Exportação de funções para o escopo global (evita erros do onclick)
     window.mudarModoAuth = function(modo) {
       const titulo = document.getElementById('tituloAuth');
       const acoesLogin = document.getElementById('acoesLogin');
@@ -280,7 +275,7 @@ const analytics = getAnalytics(app);
           return;
         }
 
-        // Criar a conta no banco Firestore
+        // Salvar a nova conta no banco Firestore
         await setDoc(userRef, {
           usuarioOriginal: user,
           senha: pass,
@@ -292,7 +287,7 @@ const analytics = getAnalytics(app);
         window.mudarModoAuth('login');
       } catch (e) {
         console.error("Erro ao cadastrar:", e);
-        alert("Erro ao conectar com o Firebase. Verifique se copiou as chaves corretamente.");
+        alert("Erro ao conectar ao banco de dados. Verifique a permissão das regras no Firestore.");
       }
     };
 
@@ -344,13 +339,18 @@ const analytics = getAnalytics(app);
     }
 
     async function carregarDadosDoFirebase(user) {
-      const userRef = doc(db, "usuarios", user.toLowerCase());
-      const docSnap = await getDoc(userRef);
+      try {
+        const userRef = doc(db, "usuarios", user.toLowerCase());
+        const docSnap = await getDoc(userRef);
 
-      if (docSnap.exists()) {
-        listaEventos = docSnap.data().eventos || [];
-        iniciarSessao(user);
-      } else {
+        if (docSnap.exists()) {
+          listaEventos = docSnap.data().eventos || [];
+          iniciarSessao(user);
+        } else {
+          fazerLogout();
+        }
+      } catch (e) {
+        console.error("Erro ao carregar dados:", e);
         fazerLogout();
       }
     }
@@ -382,7 +382,7 @@ const analytics = getAnalytics(app);
       voltarParaPrincipal();
     };
 
-    // INICIALIZAÇÃO DE TELAS E COMPONENTES
+    // Inicialização do aplicativo
     document.addEventListener("DOMContentLoaded", function() {
       pickerCriacao = flatpickr("#dataEvento", {
         locale: "pt",
@@ -417,7 +417,7 @@ const analytics = getAnalytics(app);
       }
     });
 
-    // LÓGICA DE EVENTOS DA APLICAÇÃO
+    // Lógica dos Formulários e Eventos
     const selectQtd = document.getElementById('qtdPessoas');
     for (let i = 2; i <= 20; i++) {
       const option = document.createElement('option');
@@ -815,3 +815,5 @@ const analytics = getAnalytics(app);
       });
     }
   </script>
+</body>
+</html>
