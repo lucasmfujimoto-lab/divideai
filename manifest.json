@@ -1,0 +1,21 @@
+{
+  "name": "Divide a Conta Aí",
+  "short_name": "DivideAí",
+  "description": "Divisão simples e rápida de despesas em grupo.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#eef2f5",
+  "theme_color": "#27ae60",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2489/2489756.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2489/2489756.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
