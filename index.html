@@ -214,33 +214,20 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
 
-  <!-- Módulos do Firebase (SDK v9) -->
+<!-- Módulos do Firebase (SDK v9) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, doc, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // ⬇️ COLE AQUI AS SUAS CHAVES DO FIREBASE ⬇️
-   // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyAEWOsJkFu0u4kd00FcQI04Lb1tdqnmZas",
-  authDomain: "divideai-11ccd.firebaseapp.com",
-  projectId: "divideai-11ccd",
-  storageBucket: "divideai-11ccd.firebasestorage.app",
-  messagingSenderId: "548322832630",
-  appId: "1:548322832630:web:59a7b7ccfff88e9019bcd7",
-  measurementId: "G-Y13N53L4D0"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+    const firebaseConfig = {
+      apiKey: "COLE_SUA_API_KEY_AQUI",
+      authDomain: "SEU_PROJETO.firebaseapp.com",
+      projectId: "SEU_PROJETO_ID",
+      storageBucket: "SEU_PROJETO.appspot.com",
+      messagingSenderId: "SEU_SENDER_ID",
+      appId: "SEU_APP_ID"
+    };
 
     // Inicializa o Firebase e Firestore
     const app = initializeApp(firebaseConfig);
@@ -252,6 +239,144 @@ const analytics = getAnalytics(app);
     let telaOrigemDetalhes = 'principal';
     let pickerCriacao, pickerFiltro;
 
+    // EXPORTA AS FUNÇÕES PARA O ESCOPO GLOBAL (Resolve o problema do onclick no HTML)
+    window.mudarModoAuth = function(modo) {
+      const titulo = document.getElementById('tituloAuth');
+      const acoesLogin = document.getElementById('acoesLogin');
+      const acoesCadastro = document.getElementById('acoesCadastro');
+
+      if (modo === 'cadastro') {
+        titulo.textContent = 'Criar Nova Conta';
+        acoesLogin.classList.add('oculto');
+        acoesCadastro.classList.remove('oculto');
+      } else {
+        titulo.textContent = 'Entrar na Conta';
+        acoesCadastro.classList.add('oculto');
+        acoesLogin.classList.remove('oculto');
+      }
+    };
+
+    window.cadastrarUsuario = async function() {
+      const user = document.getElementById('usuarioInput').value.trim();
+      const pass = document.getElementById('senhaInput').value.trim();
+
+      if (!user || !pass) {
+        alert('Por favor, preencha o usuário e a senha.');
+        return;
+      }
+
+      try {
+        const userRef = doc(db, "usuarios", user.toLowerCase());
+        const docSnap = await getDoc(userRef);
+
+        if (docSnap.exists()) {
+          alert(`O usuário "${user}" já existe na nuvem! Escolha outro nome.`);
+          return;
+        }
+
+        // Criar a conta no banco Firestore
+        await setDoc(userRef, {
+          usuarioOriginal: user,
+          senha: pass,
+          eventos: []
+        });
+
+        alert('Conta criada com sucesso na nuvem! Faça login para entrar.');
+        document.getElementById('senhaInput').value = '';
+        window.mudarModoAuth('login');
+      } catch (e) {
+        console.error("Erro ao cadastrar:", e);
+        alert("Erro ao conectar com o Firebase. Verifique se copiou as chaves corretamente.");
+      }
+    };
+
+    window.fazerLogin = async function() {
+      const user = document.getElementById('usuarioInput').value.trim();
+      const pass = document.getElementById('senhaInput').value.trim();
+
+      if (!user || !pass) { alert('Preencha o usuário e a senha.'); return; }
+
+      try {
+        const userRef = doc(db, "usuarios", user.toLowerCase());
+        const docSnap = await getDoc(userRef);
+
+        if (!docSnap.exists() || docSnap.data().senha !== pass) {
+          alert('Usuário ou senha incorretos.');
+          return;
+        }
+
+        usuarioLogado = user;
+        localStorage.setItem('divideai_usuario_logado', usuarioLogado);
+        listaEventos = docSnap.data().eventos || [];
+
+        document.getElementById('usuarioInput').value = '';
+        document.getElementById('senhaInput').value = '';
+
+        iniciarSessao(user);
+      } catch (e) {
+        console.error("Erro ao fazer login:", e);
+        alert("Erro ao conectar ao banco de dados.");
+      }
+    };
+
+    window.fazerLogout = function() {
+      usuarioLogado = null;
+      localStorage.removeItem('divideai_usuario_logado');
+      esconderTodasTelas();
+      document.getElementById('telaAuth').classList.remove('oculto');
+    };
+
+    function iniciarSessao(user) {
+      document.getElementById('nomeUsuarioLogado').textContent = user;
+      voltarParaPrincipal();
+    }
+
+    async function salvarNuvem() {
+      if (!usuarioLogado) return;
+      const userRef = doc(db, "usuarios", usuarioLogado.toLowerCase());
+      await updateDoc(userRef, { eventos: listaEventos });
+    }
+
+    async function carregarDadosDoFirebase(user) {
+      const userRef = doc(db, "usuarios", user.toLowerCase());
+      const docSnap = await getDoc(userRef);
+
+      if (docSnap.exists()) {
+        listaEventos = docSnap.data().eventos || [];
+        iniciarSessao(user);
+      } else {
+        fazerLogout();
+      }
+    }
+
+    window.irParaAlterarSenha = function() {
+      esconderTodasTelas();
+      document.getElementById('telaAlterarSenha').classList.remove('oculto');
+    };
+
+    window.salvarNovaSenha = async function() {
+      const atual = document.getElementById('senhaAtualInput').value.trim();
+      const nova = document.getElementById('novaSenhaInput').value.trim();
+
+      if (!atual || !nova) { alert('Preencha todos os campos de senha.'); return; }
+
+      const userRef = doc(db, "usuarios", usuarioLogado.toLowerCase());
+      const docSnap = await getDoc(userRef);
+
+      if (docSnap.data().senha !== atual) {
+        alert('A senha atual está incorreta.');
+        return;
+      }
+
+      await updateDoc(userRef, { senha: nova });
+      alert('Senha alterada com sucesso na nuvem!');
+      
+      document.getElementById('senhaAtualInput').value = '';
+      document.getElementById('novaSenhaInput').value = '';
+      voltarParaPrincipal();
+    };
+
+    // INICIALIZAÇÃO DE TELAS E COMPONENTES
     document.addEventListener("DOMContentLoaded", function() {
       pickerCriacao = flatpickr("#dataEvento", {
         locale: "pt",
@@ -286,137 +411,7 @@ const analytics = getAnalytics(app);
       }
     });
 
-    // FUNÇÕES DO BANCO DE DADOS FIREBASE (NUVEM)
-
-    async function salvarNuvem() {
-      if (!usuarioLogado) return;
-      const userRef = doc(db, "usuarios", usuarioLogado.toLowerCase());
-      await updateDoc(userRef, { eventos: listaEventos });
-    }
-
-    async function carregarDadosDoFirebase(user) {
-      const userRef = doc(db, "usuarios", user.toLowerCase());
-      const docSnap = await getDoc(userRef);
-
-      if (docSnap.exists()) {
-        const dados = docSnap.data();
-        listaEventos = dados.eventos || [];
-        iniciarSessao(user);
-      } else {
-        alert("Erro ao carregar dados do usuário.");
-        fazerLogout();
-      }
-    }
-
-    // AUTENTICAÇÃO NA NUVEM
-
-    window.mudarModoAuth = function(modo) {
-      const titulo = document.getElementById('tituloAuth');
-      const acoesLogin = document.getElementById('acoesLogin');
-      const acoesCadastro = document.getElementById('acoesCadastro');
-
-      if (modo === 'cadastro') {
-        titulo.textContent = 'Criar Nova Conta';
-        acoesLogin.classList.add('oculto');
-        acoesCadastro.classList.remove('oculto');
-      } else {
-        titulo.textContent = 'Entrar na Conta';
-        acoesCadastro.classList.add('oculto');
-        acoesLogin.classList.remove('oculto');
-      }
-    };
-
-    window.cadastrarUsuario = async function() {
-      const user = document.getElementById('usuarioInput').value.trim();
-      const pass = document.getElementById('senhaInput').value.trim();
-
-      if (!user || !pass) { alert('Preencha o usuário e a senha.'); return; }
-
-      const userRef = doc(db, "usuarios", user.toLowerCase());
-      const docSnap = await getDoc(userRef);
-
-      if (docSnap.exists()) {
-        alert(`O usuário "${user}" já existe na nuvem! Escolha outro nome.`);
-        return;
-      }
-
-      // Salva a conta direto no banco Firestore
-      await setDoc(userRef, {
-        usuarioOriginal: user,
-        senha: pass,
-        eventos: []
-      });
-
-      alert('Conta criada com sucesso na nuvem! Faça login para entrar.');
-      document.getElementById('senhaInput').value = '';
-      mudarModoAuth('login');
-    };
-
-    window.fazerLogin = async function() {
-      const user = document.getElementById('usuarioInput').value.trim();
-      const pass = document.getElementById('senhaInput').value.trim();
-
-      if (!user || !pass) { alert('Preencha o usuário e a senha.'); return; }
-
-      const userRef = doc(db, "usuarios", user.toLowerCase());
-      const docSnap = await getDoc(userRef);
-
-      if (!docSnap.exists() || docSnap.data().senha !== pass) {
-        alert('Usuário ou senha incorretos.');
-        return;
-      }
-
-      usuarioLogado = user;
-      localStorage.setItem('divideai_usuario_logado', usuarioLogado);
-      listaEventos = docSnap.data().eventos || [];
-
-      document.getElementById('usuarioInput').value = '';
-      document.getElementById('senhaInput').value = '';
-
-      iniciarSessao(user);
-    };
-
-    window.fazerLogout = function() {
-      usuarioLogado = null;
-      localStorage.removeItem('divideai_usuario_logado');
-      esconderTodasTelas();
-      document.getElementById('telaAuth').classList.remove('oculto');
-    };
-
-    function iniciarSessao(user) {
-      document.getElementById('nomeUsuarioLogado').textContent = user;
-      voltarParaPrincipal();
-    }
-
-    window.irParaAlterarSenha = function() {
-      esconderTodasTelas();
-      document.getElementById('telaAlterarSenha').classList.remove('oculto');
-    };
-
-    window.salvarNovaSenha = async function() {
-      const atual = document.getElementById('senhaAtualInput').value.trim();
-      const nova = document.getElementById('novaSenhaInput').value.trim();
-
-      if (!atual || !nova) { alert('Preencha todos os campos de senha.'); return; }
-
-      const userRef = doc(db, "usuarios", usuarioLogado.toLowerCase());
-      const docSnap = await getDoc(userRef);
-
-      if (docSnap.data().senha !== atual) {
-        alert('A senha atual está incorreta.');
-        return;
-      }
-
-      await updateDoc(userRef, { senha: nova });
-      alert('Senha alterada com sucesso na nuvem!');
-      
-      document.getElementById('senhaAtualInput').value = '';
-      document.getElementById('novaSenhaInput').value = '';
-      voltarParaPrincipal();
-    };
-
-    // LÓGICA DE EVENTOS
-
+    // LÓGICA DE EVENTOS DA APLICAÇÃO
     const selectQtd = document.getElementById('qtdPessoas');
     for (let i = 2; i <= 20; i++) {
       const option = document.createElement('option');
@@ -814,5 +809,3 @@ const analytics = getAnalytics(app);
       });
     }
   </script>
-</body>
-</html>
